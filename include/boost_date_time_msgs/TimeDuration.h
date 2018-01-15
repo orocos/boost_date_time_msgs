@@ -19,6 +19,9 @@
 namespace boost_date_time_msgs 
 {
 template <typename ContainerAllocator> using TimeDuration_ = ::boost::posix_time::time_duration;
+typedef TimeDuration_<std::allocator<void>> TimeDuration;
+typedef boost::shared_ptr<TimeDuration> TimeDurationPtr;
+typedef boost::shared_ptr<const TimeDuration> TimeDurationConstPtr;
 }  // namespace boost_date_time_msgs
 
 namespace ros

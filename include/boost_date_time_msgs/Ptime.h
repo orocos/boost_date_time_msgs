@@ -18,6 +18,9 @@
 namespace boost_date_time_msgs 
 {
 template <typename ContainerAllocator> using Ptime_ = ::boost::posix_time::ptime;
+typedef Ptime_<std::allocator<void>> Ptime;
+typedef boost::shared_ptr<Ptime> PtimePtr;
+typedef boost::shared_ptr<const Ptime> PtimeConstPtr;
 }  // namespace boost_date_time_msgs
 
 namespace ros
