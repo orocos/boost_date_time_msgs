@@ -146,7 +146,7 @@ struct Serializer<::boost::posix_time::time_duration>
 #if defined(BOOST_DATE_TIME_HAS_NANOSECONDS)
     d = ::boost::posix_time::seconds(sec) + ::boost::posix_time::nanoseconds(nsec);
 #else
-    d = ::boost::posix_time::seconds(sec) + ::boost::posix_time::microseconds(nsec/1000.0);
+    d = ::boost::posix_time::seconds(sec) + ::boost::posix_time::microseconds(nsec/1000);
 #endif
   }
 
