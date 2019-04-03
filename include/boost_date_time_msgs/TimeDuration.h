@@ -16,12 +16,51 @@
 #include <std_msgs/Duration.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#include "special_values.h"
+
 namespace boost_date_time_msgs 
 {
 template <typename ContainerAllocator> using TimeDuration_ = ::boost::posix_time::time_duration;
 typedef TimeDuration_<std::allocator<void>> TimeDuration;
 typedef boost::shared_ptr<TimeDuration> TimeDurationPtr;
 typedef boost::shared_ptr<const TimeDuration> TimeDurationConstPtr;
+
+static inline ros::Duration toRos(const ::boost::posix_time::time_duration& d) {
+  if (d.is_not_a_date_time()) {
+    return duration::not_a_date_time;
+  } else if (d.is_pos_infinity()) {
+    return duration::pos_infin;
+  } else if (d.is_neg_infinity()) {
+    return duration::neg_infin;
+  } else {
+    return ros::Duration(
+        (int32_t) d.total_seconds(),
+#if defined(BOOST_DATE_TIME_HAS_NANOSECONDS)
+        (int32_t) d.fractional_seconds());
+#else
+        (int32_t) (d.fractional_seconds() * 1000));
+#endif
+  }
+}
+
+static inline ::boost::posix_time::time_duration fromRos(const ros::Duration &duration) {
+  if (duration == ::boost_date_time_msgs::duration::not_a_date_time) {
+    return ::boost::posix_time::not_a_date_time;
+  } else if (duration == ::boost_date_time_msgs::duration::pos_infin) {
+    return ::boost::posix_time::pos_infin;
+  } else if (duration == ::boost_date_time_msgs::duration::neg_infin) {
+    return ::boost::posix_time::neg_infin;
+  } else {
+#if defined(BOOST_DATE_TIME_HAS_NANOSECONDS)
+    return ::boost::posix_time::seconds(duration.sec)
+         + ::boost::posix_time::nanoseconds(duration.nsec);
+#else
+    return ::boost::posix_time::seconds(duration.sec)
+         + ::boost::posix_time::microseconds(duration.nsec/1000);
+#endif
+  }
+}
+
 }  // namespace boost_date_time_msgs
 
 namespace ros
@@ -126,28 +165,15 @@ struct Serializer<::boost::posix_time::time_duration>
   template<typename Stream>
   inline static void write(Stream& stream, const ::boost::posix_time::time_duration& d)
   {
-    int32_t sec, nsec;
-    sec = d.total_seconds();
-#if defined(BOOST_DATE_TIME_HAS_NANOSECONDS) 
-    nsec = d.fractional_seconds();
-#else 
-    nsec = d.fractional_seconds() * 1000;
-#endif 
-    stream.next(sec);
-    stream.next(nsec);
+    stream.next(::boost_date_time_msgs::toRos(d));
   }
 
   template<typename Stream>
   inline static void read(Stream& stream, ::boost::posix_time::time_duration& d)
   {
-    int32_t sec, nsec;
-    stream.next(sec);
-    stream.next(nsec);
-#if defined(BOOST_DATE_TIME_HAS_NANOSECONDS)
-    d = ::boost::posix_time::seconds(sec) + ::boost::posix_time::nanoseconds(nsec);
-#else
-    d = ::boost::posix_time::seconds(sec) + ::boost::posix_time::microseconds(nsec/1000);
-#endif
+    ros::Duration duration;
+    stream.next(duration);
+    d = ::boost_date_time_msgs::fromRos(duration);
   }
 
   inline static uint32_t serializedLength(const ::boost::posix_time::time_duration&)

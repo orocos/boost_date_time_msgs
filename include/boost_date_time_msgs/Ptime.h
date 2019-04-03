@@ -15,12 +15,53 @@
 #include <std_msgs/Time.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#include "special_values.h"
+
 namespace boost_date_time_msgs 
 {
 template <typename ContainerAllocator> using Ptime_ = ::boost::posix_time::ptime;
 typedef Ptime_<std::allocator<void>> Ptime;
 typedef boost::shared_ptr<Ptime> PtimePtr;
 typedef boost::shared_ptr<const Ptime> PtimeConstPtr;
+
+static inline ros::Time toRos(const ::boost::posix_time::ptime &t) {
+  if (t.is_not_a_date_time()) {
+    return time::not_a_date_time;
+  } else if (t.is_pos_infinity()) {
+    return time::pos_infin;
+  } else if (t.is_neg_infinity()) {
+    return time::neg_infin;
+  } else {
+    static const ::boost::posix_time::ptime epoch = ::boost::posix_time::from_time_t(0);
+    ::boost::posix_time::time_duration d = t - epoch;
+    return ros::Time(
+        (uint32_t) d.total_seconds(),
+#if defined(BOOST_DATE_TIME_HAS_NANOSECONDS)
+        (uint32_t) d.fractional_seconds());
+#else
+        (uint32_t) (d.fractional_seconds() * 1000));
+#endif
+  }
+}
+
+static inline ::boost::posix_time::ptime fromRos(const ros::Time &time) {
+  if (time == time::not_a_date_time) {
+    return ::boost::posix_time::not_a_date_time;
+  } else if (time == time::pos_infin) {
+    return ::boost::posix_time::pos_infin;
+  } else if (time == time::neg_infin) {
+    return ::boost::posix_time::neg_infin;
+  } else {
+#if defined(BOOST_DATE_TIME_HAS_NANOSECONDS)
+    return ::boost::posix_time::from_time_t(time.sec)
+         + ::boost::posix_time::nanoseconds(time.nsec);
+#else
+    return::boost::posix_time::from_time_t(time.sec)
+        + ::boost::posix_time::microseconds(time.nsec/1000);
+#endif
+  }
+}
+
 }  // namespace boost_date_time_msgs
 
 namespace ros
@@ -125,27 +166,15 @@ struct Serializer<::boost::posix_time::ptime>
   template<typename Stream>
   inline static void write(Stream& stream, const ::boost::posix_time::ptime& t)
   {
-    static const ::boost::posix_time::ptime epoch = ::boost::posix_time::from_time_t(0);
-    ::boost::posix_time::time_duration d = t - epoch;
-    stream.next((uint32_t) d.total_seconds());
-#if defined(BOOST_DATE_TIME_HAS_NANOSECONDS)
-    stream.next((uint32_t) d.fractional_seconds());
-#else
-    stream.next((uint32_t) (d.fractional_seconds() * 1000.));
-#endif
+    stream.next(::boost_date_time_msgs::toRos(t));
   }
 
   template<typename Stream>
   inline static void read(Stream& stream, ::boost::posix_time::ptime& t)
   {
-    uint32_t sec, nsec;
-    stream.next(sec);
-    stream.next(nsec);
-#if defined(BOOST_DATE_TIME_HAS_NANOSECONDS)
-    t = ::boost::posix_time::from_time_t(sec) + ::boost::posix_time::nanoseconds(nsec);
-#else
-    t = ::boost::posix_time::from_time_t(sec) + ::boost::posix_time::microseconds(nsec/1000);
-#endif
+    ros::Time time;
+    stream.next(time);
+    t = ::boost_date_time_msgs::fromRos(time);
   }
 
   inline static uint32_t serializedLength(const ::boost::posix_time::ptime& t)
